@@ -3,8 +3,7 @@ import { addDoc, collection, getDocs } from "firebase/firestore";
 import Router from 'next/router';
 import React, { useState } from 'react';
 import { db } from '../../../firebase';
-
-let CryptoJS = require('crypto-js');
+import bcrypt from 'bcryptjs';
 
 type FieldType = {
   username?: string;
@@ -15,7 +14,7 @@ type FieldType = {
 const SignUpComponent: React.FC = () => {
 
     const [ load, setLoad] = useState(false);
-
+    const [form] = Form.useForm();
     const onFinish = async (values: any) => {
         setLoad(true);
         let users:Array<Record<string,string>> = []
@@ -53,8 +52,9 @@ const SignUpComponent: React.FC = () => {
       };
 
       const encryptPassword = (pass: string) => {
-        // const ciphertext = CryptoJS.AES.encrypt(pass, 'Pass').toString();
-        return pass;
+        var salt = bcrypt.genSaltSync(10);
+        var hash = bcrypt.hashSync(pass, salt);
+        return hash;
       };
 
   return( 
@@ -73,6 +73,7 @@ const SignUpComponent: React.FC = () => {
                 onFinishFailed={onFinishFailed}
                 autoComplete="off"
                 className='w-100'
+                form={form}
             >
                 <Form.Item<FieldType>
                 label="Username"
@@ -87,7 +88,7 @@ const SignUpComponent: React.FC = () => {
                 name="password"
                 rules={[{ required: true, message: 'Please input your password!' }]}
                 >
-                <Input.Password />
+                <Input.Password onChange={() => form.validateFields()}/>
                 </Form.Item>
 
                 <Form.Item<FieldType>

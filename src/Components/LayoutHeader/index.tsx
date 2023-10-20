@@ -6,6 +6,8 @@ import React, { useEffect, useState } from 'react';
 import Cookies from 'js-cookie';
 import {useSelector, useDispatch} from "react-redux";
 import { dataAction } from '@/redux/features/data';
+import { googleLogout } from '@react-oauth/google';
+
 const { Header } = Layout;
 
 const LayoutHeader: React.FC = () => {
@@ -55,9 +57,13 @@ const LayoutHeader: React.FC = () => {
         key: '2',
         label: "Logout",
         onClick: () => {
+            const type = Cookies.get('logType')
+            type === 'social' && googleLogout();
             Cookies.remove('authToken')
             Cookies.remove('name')
             Cookies.remove('admin')
+            Cookies.remove('logType')
+
             dispatch(dataAction.setAuth({
               admin: null,
               authorization:  false

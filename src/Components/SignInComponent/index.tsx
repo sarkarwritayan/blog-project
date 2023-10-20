@@ -6,6 +6,10 @@ import React, { useState } from 'react';
 import { db } from '../../../firebase';
 import {useDispatch} from 'react-redux'
 import { dataAction } from '@/redux/features/data';
+import bcrypt from 'bcryptjs';
+import jwt from 'jsonwebtoken';
+import { GoogleLogin } from '@react-oauth/google';
+import jwt_decode from "jwt-decode";
 
 type FieldType = {
   username?: string;
@@ -16,11 +20,22 @@ const SignInComponent: React.FC = () => {
 
     const [ load, setLoad] = useState(false);
 
+    const afterLogin = (userObj: { admin: boolean; username: string; }, token: string) => {
+        Cookies.set('admin', userObj?.admin as unknown as string)
+        Cookies.set('authToken', token)
+        Cookies.set('name', userObj?.username)
+        dispatch(dataAction.setAuth({
+            admin: userObj?.admin,
+            authorization:  token
+        }))
+        Router.push('/')
+    }
+
     const dispatch = useDispatch()
-    const decryptPassword = (pass: string) => {
-        // const bytes  = CryptoJS.AES.decrypt(pass, "Pass");
-        // const originalText = bytes.toString(CryptoJS.enc.Utf8);
-        return pass;
+    const decryptPassword = (hash:string, pass: string) => {
+       const result =  bcrypt.compareSync(pass, hash);
+        
+        return result;
       };
 
     const onFinish = async (values: any) => {
@@ -33,36 +48,35 @@ const SignInComponent: React.FC = () => {
         try {
             await getDocs(collection(db, "Users"))
         .then(async (querySnapshot)=>{               
-            users = querySnapshot.docs
-                .map((doc) => ({...doc.data()}));
-        }).catch((error) => {
-            alert('something went wrong')
-        })
-        const userObj = users.find((item) => item?.username === values?.username)
-        console.log({users: users[1].username, val: values?.username, userObj});
-        
-        if(userObj){
-            if(userObj?.password === decryptPassword(values?.password)){
-                
-                console.log('hiiii');
-                Cookies.set('admin', userObj?.admin)
-                Cookies.set('authToken', userObj?.username)
-                Cookies.set('name', userObj?.username)
-                dispatch(dataAction.setAuth({
-                    admin: userObj?.admin,
-                    authorization:  userObj?.username
-                }))
-                Router.push('/')
-            }
-            else{
+            users = querySnapshot.docs.map((doc) => ({...doc.data()}));
+
+            const userObj = users.find((item) => item?.username === values?.username)
+            
+            if(userObj){                
+                if(decryptPassword(userObj?.password, values?.password)){
+                    let secret = 'qwerty';
+                    const token = jwt.sign(userObj, secret);
+                    afterLogin(userObj as unknown as { admin: boolean; username: string; }, token)
+                    Cookies.set('logType', 'normal')
+                    
+                }
+                else{
+                    alert("Invalid Credential")
+                }
+            }else{
                 alert("Invalid Credential")
             }
-        }else{
-            alert("Invalid Credential")
-        }
+                setLoad(false)
+            }).catch((error) => {
             setLoad(false)
+            console.error(error);
+            
+            alert('something went wrong')
+        })
         } catch (error) {
             setLoad(false)
+            console.error(error);
+            
             alert('Something went wrong')
         }
       };
@@ -114,6 +128,23 @@ const SignInComponent: React.FC = () => {
                 </Button>
                 </Form.Item>
             </Form>
+        </div>
+        <div className='center'>
+            <GoogleLogin
+                onSuccess={credentialResponse => {
+                    console.log({credentialResponse});
+                    const userDetails = jwt_decode(credentialResponse?.credential as string)
+                    const obj = {
+                        admin: false,
+                        username: (userDetails as Record<string,string>).email
+                    }
+                    afterLogin(obj, credentialResponse?.credential as string);
+                    Cookies.set('logType', 'social')
+                }}
+                onError={() => {
+                    console.log('Login Failed');
+                }}
+            />
         </div>
     </div>
   )
