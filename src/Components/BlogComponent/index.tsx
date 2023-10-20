@@ -3,6 +3,7 @@ import { db } from '../../../firebase';
 import { useEffect, useState } from "react";
 import { Col, Row } from "antd";
 import BlogCard from "../BlogCard";
+import Cookies from 'js-cookie'
 const BlogComponent = () => {
     const [blogs, setBlogs] = useState<{ id: string; }[]>([]);
     const [blogLoad, setBlogLoad] = useState(false);
@@ -28,19 +29,23 @@ const BlogComponent = () => {
     useEffect(() => {
         fetchAllBlogs()
     },[])
-
+    const username = Cookies.get('name')
     return(
-        blogs.length < 1
-            ? <div className="w-100 h-100 center">
-                No Blogs to show
-            </div> 
-            :<Row gutter={[16, 16]} className="mt-1">
-            {blogs?.map((item) => (
-                <Col span={8} key={item.id}>
-                <BlogCard item={item} fetchAllBlogs={fetchAllBlogs as () => Promise<void>}/>
-            </Col>
-            ))}
-        </Row>
+        <div>
+            {!!username && <h1 className="text-center">Welcome {`${username}`}</h1>}
+            <h2>Blogs</h2>
+            { blogs.length < 1
+                 ? <div className="w-100 h-100 center">
+                     No Blogs to show
+                 </div> 
+                 :<Row gutter={[16, 16]} className="mt-1">
+                 {blogs?.map((item) => (
+                     <Col span={8} key={item.id}>
+                     <BlogCard item={item} fetchAllBlogs={fetchAllBlogs as () => Promise<void>}/>
+                 </Col>
+                 ))}
+             </Row>}
+        </div>
     )
 };
 
